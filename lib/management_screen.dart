@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'asset_search_dialog.dart';
 import 'dart:convert';
@@ -23,7 +22,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
   }
 
   Future<double> _getCurrentPrice(String code) async {
-    final response = await http.get(Uri.parse('$API_BASE/search/symbol/$code'));
+    final response = await http.get(Uri.parse('$API_BASE/price/$code'));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       return data['price']?.toDouble(); // 현재가를 반환합니다.
@@ -97,9 +96,15 @@ class _ManagementScreenState extends State<ManagementScreen> {
     });
   }
 
-  String formatCurrency(double value) {
-    final formatter = NumberFormat('#,###', 'ko_KR');
-    return formatter.format(value);
+  String formatCurrency(double value, code) {
+    if (RegExp(r'^[0-9]').hasMatch(code[0])) {
+      final formatter = NumberFormat('#,###', 'ko_KR');
+      return formatter.format(value);
+    }
+    else {
+      final formatter = NumberFormat('#,###.##', 'en_US');
+      return formatter.format(value);
+    }
   }
 
   @override
@@ -135,7 +140,18 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     future: _getCurrentPrice(asset['code']),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Text('수량: ${asset['quantity']} | 평가금: 로딩 중...');
+                        return Row(
+                          children: [
+                            Text('수량: ${asset['quantity']} | 평가금: '),
+                            SizedBox(
+                              height: 20.0,
+                              width: 20.0,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.0,
+                              ),
+                            )
+                          ],
+                        );
                       } else if (snapshot.hasError) {
                         return Text('Error');
                       } else {
@@ -145,14 +161,14 @@ class _ManagementScreenState extends State<ManagementScreen> {
                         double profitLoss = currentValue - initialValue;
                         double profitLossPercent = (profitLoss / initialValue) * 100;
                         String profitLossText = profitLoss >= 0
-                            ? '+${formatCurrency(profitLoss)} (${profitLossPercent.toStringAsFixed(2)}%)'
-                            : '${formatCurrency(profitLoss)} (${profitLossPercent.toStringAsFixed(2)}%)';
+                            ? '+${formatCurrency(profitLoss, asset['code'])} (${profitLossPercent.toStringAsFixed(2)}%)'
+                            : '-${formatCurrency(profitLoss.abs(), asset['code'])} (${profitLossPercent.abs().toStringAsFixed(2)}%)';
                         Color profitLossColor = profitLoss >= 0 ? Colors.red : Colors.blue;
 
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('수량: ${asset['quantity']} | 평가금: ${formatCurrency(currentValue)}원'),
+                            Text('수량: ${asset['quantity']} | 평가금: ${formatCurrency(currentValue, asset['code'])}'),
                             Text(
                               '수익: $profitLossText',
                               style: TextStyle(color: profitLossColor),
@@ -166,7 +182,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
                     spacing: 12, // space between two icons
                     children: <Widget>[
                       IconButton(
-                        icon: Icon(Icons.swap_vert),
+                        icon: Icon(Icons.edit),
                         onPressed: () {
                           showDialog(
                             context: context,
@@ -197,19 +213,54 @@ class _ManagementScreenState extends State<ManagementScreen> {
   }
 }
 
-class TradeDialog extends StatelessWidget {
+class TradeDialog extends StatefulWidget {
   final int index;
   final Function(String, int, double) onTrade;
 
   TradeDialog({required this.index, required this.onTrade});
 
+  @override
+  _TradeDialogState createState() => _TradeDialogState();
+}
+
+class _TradeDialogState extends State<TradeDialog> {
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  List<bool> isSelected = [true, false];
 
   @override
   Widget build(BuildContext context) {
+    bool isBuy = isSelected[0];
+
     return AlertDialog(
-      title: Text('매수/매도'),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(isBuy ? '매수' : '매도'),
+          ToggleButtons(
+            borderRadius: BorderRadius.circular(10.0),
+            constraints: BoxConstraints(minHeight: 30.0, minWidth: 60.0),
+            isSelected: isSelected,
+            onPressed: (int index) {
+              setState(() {
+                for (int i = 0; i < isSelected.length; i++) {
+                  isSelected[i] = i == index;
+                }
+              });
+            },
+            children: <Widget>[
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12.0),
+                child: Text('매수', style: TextStyle(fontSize: 16)),
+              ),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 12.0),
+                child: Text('매도', style: TextStyle(fontSize: 16)),
+              ),
+            ],
+          ),
+        ],
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
@@ -218,52 +269,25 @@ class TradeDialog extends StatelessWidget {
             decoration: InputDecoration(labelText: '수량'),
             keyboardType: TextInputType.number,
           ),
-          TextField(
-            controller: _priceController,
-            decoration: InputDecoration(labelText: '가격 (원)'),
-            keyboardType: TextInputType.number,
-          ),
+          if (isBuy)
+            TextField(
+              controller: _priceController,
+              decoration: InputDecoration(labelText: '가격'),
+              keyboardType: TextInputType.number,
+            ),
         ],
       ),
       actions: <Widget>[
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: <Widget>[
-            Expanded(
-              child: ElevatedButton(
-                child: Icon(Icons.add_shopping_cart),
-                onPressed: () {
-                  int quantity = int.tryParse(_quantityController.text) ?? 0;
-                  double price = double.tryParse(_priceController.text) ?? 0.0;
-                  if (quantity > 0 && price > 0) {
-                    onTrade('매수', quantity, price);
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
-            ),
-            Expanded(
-              child: ElevatedButton(
-                child:  Icon(Icons.remove_shopping_cart),
-                onPressed: () {
-                  int quantity = int.tryParse(_quantityController.text) ?? 0;
-                  double price = double.tryParse(_priceController.text) ?? 0.0;
-                  if (quantity > 0 && price > 0) {
-                    onTrade('매도', quantity, price);
-                    Navigator.of(context).pop();
-                  }
-                },
-              ),
-            ),
-            Expanded(
-              child: ElevatedButton(
-                child: Icon(Icons.cancel),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-              ),
-            ),
-          ],
+        ElevatedButton(
+          child: Text(isBuy ? 'Buy' : 'Sell'),
+          onPressed: () {
+            int quantity = int.tryParse(_quantityController.text) ?? 0;
+            double price = isBuy ? (double.tryParse(_priceController.text) ?? 0.0) : 0.0;
+            if (quantity > 0 && (isBuy ? price > 0 : true)) {
+              widget.onTrade(isBuy ? '매수' : '매도', quantity, price);
+              Navigator.of(context).pop();
+            }
+          },
         ),
       ],
     );

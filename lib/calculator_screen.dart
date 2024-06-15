@@ -33,7 +33,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
       _stocks.add({
         'name': asset['name'] as String,
         'quantity': asset['quantity'] as int,
-        'price': asset['price'] as double,
+        'price': asset['initialPrice'] as double,
         'percentage': 0.0,
       });
     });
@@ -119,12 +119,19 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                   itemCount: box.length,
                   itemBuilder: (context, index) {
                     var asset = box.getAt(index) as Map;
+                    bool isAdded = _stocks.any((stock) => stock['name'] == asset['name']);
+
                     return ListTile(
                       title: Text(asset['name'] as String),
-                      onTap: () {
-                        _addStockFromAsset(asset.cast<String, dynamic>());
-                        Navigator.of(context).pop();
-                      },
+                      trailing: isAdded
+                        ? Icon(Icons.check, color: Colors.grey)
+                        : null,
+                      onTap: isAdded
+                          ? null
+                          : () {
+                              _addStockFromAsset(asset.cast<String, dynamic>());
+                              Navigator.of(context).pop();
+                            },
                     );
                   },
                 );
@@ -162,12 +169,6 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                   controller: _cashController,
                   decoration: InputDecoration(labelText: '현금 (원)'),
                   keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return '현금을 입력하세요';
-                    }
-                    return null;
-                  },
                 ),
                 SizedBox(height: 20),
                 ..._stocks.map((stock) {
@@ -212,7 +213,7 @@ class _CalculatorScreenState extends State<CalculatorScreen> {
                           SizedBox(width: 8),
                           Expanded(
                             flex: 1,
-                             child: TextFormField(
+                              child: TextFormField(
                               decoration: InputDecoration(labelText: '비중 (%)'),
                               keyboardType: TextInputType.number,
                               onChanged: (value) {

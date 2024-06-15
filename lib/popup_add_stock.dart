@@ -14,7 +14,6 @@ class _AddStockPopupState extends State<AddStockPopup> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _quantityController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
-  final TextEditingController _percentageController = TextEditingController();
 
   @override
   Widget build(BuildContext context) {
@@ -48,22 +47,11 @@ class _AddStockPopupState extends State<AddStockPopup> {
             ),
             TextFormField(
               controller: _priceController,
-              decoration: InputDecoration(labelText: '평단가 (원)'),
+              decoration: InputDecoration(labelText: '평단가'),
               keyboardType: TextInputType.number,
               validator: (value) {
                 if (value == null || value.isEmpty) {
                   return '평단가를 입력하세요';
-                }
-                return null;
-              },
-            ),
-            TextFormField(
-              controller: _percentageController,
-              decoration: InputDecoration(labelText: '비중 (%)'),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.isEmpty) {
-                  return '비중을 입력하세요';
                 }
                 return null;
               },
@@ -86,7 +74,6 @@ class _AddStockPopupState extends State<AddStockPopup> {
                 'name': _nameController.text,
                 'quantity': int.parse(_quantityController.text),
                 'price': double.parse(_priceController.text),
-                'percentage': double.parse(_percentageController.text),
               };
               widget.onAdd(newStock);
               Navigator.of(context).pop();

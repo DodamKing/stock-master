@@ -5,6 +5,9 @@ import 'management_screen.dart';
 
 void main() async {
   await Hive.initFlutter();
+  if (Hive.isBoxOpen('assetsbox')) {
+    await Hive.box('assetsBox').close();
+  }
   await Hive.openBox('assetsBox');
   runApp(MyApp());
 }

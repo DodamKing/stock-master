@@ -29,7 +29,7 @@ class _AssetSearchDialogState extends State<AssetSearchDialog> {
       _isLoading = true;
     });
 
-    final response = await http.get(Uri.parse('$API_BASE/search/name/${_searchController.text}'));
+    final response = await http.get(Uri.parse('$API_BASE/search/${_searchController.text}'));
     if (response.statusCode == 200) {
       setState(() {
         _searchResults = List<Map<String, dynamic>>.from(json.decode(response.body));
@@ -49,7 +49,7 @@ class _AssetSearchDialogState extends State<AssetSearchDialog> {
         'name': _selectedAsset!['Name'],
         'code': _selectedAsset!['Symbol'],
         'quantity': int.parse(_quantityController.text),
-        'price': double.parse(_priceController.text),
+        // 'price': double.parse(_priceController.text),
         'initialPrice': double.parse(_priceController.text),
       };
       widget.onAssetSaved(newAsset);
@@ -77,9 +77,9 @@ class _AssetSearchDialogState extends State<AssetSearchDialog> {
               ),
             ),
             SizedBox(height: 16),
-            _isLoading
+              _isLoading
                 ? CircularProgressIndicator()
-                : _searchResults.isNotEmpty
+                  : _searchResults.isNotEmpty
                     ? Expanded(
                         child: ListView.builder(
                           shrinkWrap: true,
@@ -99,7 +99,7 @@ class _AssetSearchDialogState extends State<AssetSearchDialog> {
                                 onTap: () {
                                   setState(() {
                                     _selectedAsset = asset;
-                                    _priceController.text = asset['Price'].toString();
+                                    // _priceController.text = asset['Price'].toString();
                                   });
                                 },
                               ),
