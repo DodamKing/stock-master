@@ -1,0 +1,192 @@
+# Flutter/Dart specific
+*.dart.js
+*.dart.js.deps
+*.dart.js.map
+*.dart.js.tar.gz
+
+# Obsolete pattern
+# In Flutter 1.5 and later, files in .dart_tool are already excluded.
+# See: https://dart.dev/tools/dart-tool
+.dart_tool/
+
+# Obsolete pattern
+# In Flutter 1.5 and later, the build/ dir is already excluded.
+# See: https://github.com/flutter/flutter/pull/32798
+build/
+
+# Android specific
+*.apk
+*.ap_
+# Ignore Android build files
+android/app/build/
+android/.gradle/
+android/local.properties
+android/.idea/
+android/app/app.iml
+android/*.iml
+android/captures/
+
+# iOS specific
+# Generated Xcode project files and logs
+ios/Flutter/.last_build_id
+ios/Pods/
+ios/Runner.xcworkspace/
+ios/Runner.xcworkspace/xcuserdata/
+ios/Flutter/Flutter.podspec
+ios/Flutter/Flutter.framework
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Generated.xcconfig
+ios/Flutter/flutter_export_environment.sh
+ios/.dart_tool/
+ios/.pub-cache/
+ios/Flutter/.plugin_symlinks/
+ios/Flutter/ephemeral/
+# Ignore Xcode build folders
+ios/build/
+# Ignore Xcode generated files
+*.pbxuser
+*.mode1v3
+*.mode2v3
+*.perspectivev3
+xcuserdata
+*.xcuserdatad
+*.xccheckout
+*.xcscmblueprint
+
+# Web related
+web/manifest.json
+
+# IntelliJ IDE project files
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Flutter/Dart specific
+.packages
+.pub/
+.flutter-plugins
+.flutter-plugins-dependencies
+flutter_export_environment.sh
+
+# Miscellaneous
+*.log
+*.tmp
+*.temp
+.DS_Store
+*.swp
+*.swo
+
+# Byte-compiled / optimized / DLL files
+*.py[cod]
+*.pyo
+*.pyc
+*.pyd
+__pycache__/
+*.so
+
+# Distribution / packaging
+.Python
+*.egg-info/
+dist/
+build/
+develop-eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+.profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
+
+# Sphinx documentation
+docs/_build/
+
+# pytest
+.cache/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Profiling data
+.prof
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IPython
+.profile_default/
+ipython_config.py
+
+# pyenv
+.python-version
+
+# celery beat schedule file
+celerybeat-schedule
+
+# SageMath parsed files
+*.sage.py
