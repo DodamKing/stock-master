@@ -4,7 +4,6 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'asset_search_dialog.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-
 import 'env.dart';
 
 class ManagementScreen extends StatefulWidget {
@@ -25,7 +24,7 @@ class _ManagementScreenState extends State<ManagementScreen> {
     final response = await http.get(Uri.parse('$API_BASE/price/$code'));
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return data['price']?.toDouble(); // 현재가를 반환합니다.
+      return data['price']?.toDouble() ?? 0.0; // 현재가를 반환합니다.
     } else {
       throw Exception('Failed to load current price');
     }
@@ -96,12 +95,11 @@ class _ManagementScreenState extends State<ManagementScreen> {
     });
   }
 
-  String formatCurrency(double value, code) {
+  String formatCurrency(double value, String code) {
     if (RegExp(r'^[0-9]').hasMatch(code[0])) {
       final formatter = NumberFormat('#,###', 'ko_KR');
       return formatter.format(value);
-    }
-    else {
+    } else {
       final formatter = NumberFormat('#,###.##', 'en_US');
       return formatter.format(value);
     }
@@ -128,83 +126,187 @@ class _ManagementScreenState extends State<ManagementScreen> {
             );
           }
 
-          return ListView.builder(
-            itemCount: box.length,
-            itemBuilder: (context, index) {
-              var asset = box.getAt(index) as Map;
+          double totalValue = 0.0;
+          double totalInitialValue = 0.0;
+          List<Future<double>> priceFutures = [];
 
-              return Card(
-                child: ListTile(
-                  title: Text('${asset['name']}'),
-                  subtitle: FutureBuilder<double>(
-                    future: _getCurrentPrice(asset['code']),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
-                        return Row(
-                          children: [
-                            Text('수량: ${asset['quantity']} | 평가금: '),
-                            SizedBox(
-                              height: 20.0,
-                              width: 20.0,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2.0,
+          for (int i = 0; i < box.length; i++) {
+            var asset = box.getAt(i) as Map;
+            priceFutures.add(_getCurrentPrice(asset['code']));
+          }
+
+          return FutureBuilder<List<double>>(
+            future: Future.wait(priceFutures),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: CircularProgressIndicator());
+              } else if (snapshot.hasError) {
+                return Center(child: Text('Error loading prices'));
+              } else {
+                List<double> prices = snapshot.data ?? [];
+                for (int i = 0; i < box.length; i++) {
+                  var asset = box.getAt(i) as Map;
+                  double currentValue = asset['quantity'] * prices[i];
+                  double initialValue = asset['quantity'] * asset['initialPrice'];
+                  totalValue += currentValue;
+                  totalInitialValue += initialValue;
+                }
+
+                double totalProfitLoss = totalValue - totalInitialValue;
+                double totalProfitLossPercent = (totalProfitLoss / totalInitialValue) * 100;
+                String totalProfitLossText = totalProfitLoss >= 0
+                    ? '+${formatCurrency(totalProfitLoss, 'KRW')} (${totalProfitLossPercent.toStringAsFixed(2)}%)'
+                    : '-${formatCurrency(totalProfitLoss.abs(), 'KRW')} (${totalProfitLossPercent.abs().toStringAsFixed(2)}%)';
+                Color totalProfitLossColor = totalProfitLoss >= 0 ? Colors.red : Colors.blue;
+
+                return Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Card(
+                        elevation: 4.0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10.0),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '총 평가금액:',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[800],
+                                ),
                               ),
-                            )
-                          ],
-                        );
-                      } else if (snapshot.hasError) {
-                        return Text('Error');
-                      } else {
-                        double currentPrice = snapshot.data ?? 0;
-                        double currentValue = asset['quantity'] * currentPrice;
-                        double initialValue = asset['quantity'] * asset['initialPrice'];
-                        double profitLoss = currentValue - initialValue;
-                        double profitLossPercent = (profitLoss / initialValue) * 100;
-                        String profitLossText = profitLoss >= 0
-                            ? '+${formatCurrency(profitLoss, asset['code'])} (${profitLossPercent.toStringAsFixed(2)}%)'
-                            : '-${formatCurrency(profitLoss.abs(), asset['code'])} (${profitLossPercent.abs().toStringAsFixed(2)}%)';
-                        Color profitLossColor = profitLoss >= 0 ? Colors.red : Colors.blue;
+                              SizedBox(height: 8.0),
+                              Text(
+                                '${formatCurrency(totalValue, 'KRW')} 원',
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.black,
+                                ),
+                              ),
+                              SizedBox(height: 16.0),
+                              Text(
+                                '총 수익:',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.grey[800],
+                                ),
+                              ),
+                              SizedBox(height: 8.0),
+                              Text(
+                                '$totalProfitLossText',
+                                style: TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.bold,
+                                  color: totalProfitLossColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: ListView.builder(
+                          itemCount: box.length,
+                          itemBuilder: (context, index) {
+                            var asset = box.getAt(index) as Map;
 
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('수량: ${asset['quantity']} | 평가금: ${formatCurrency(currentValue, asset['code'])}'),
-                            Text(
-                              '수익: $profitLossText',
-                              style: TextStyle(color: profitLossColor),
-                            ),
-                          ],
-                        );
-                      }
-                    },
-                  ),
-                  trailing: Wrap(
-                    spacing: 12, // space between two icons
-                    children: <Widget>[
-                      IconButton(
-                        icon: Icon(Icons.edit),
-                        onPressed: () {
-                          showDialog(
-                            context: context,
-                            builder: (BuildContext context) {
-                              return TradeDialog(
-                                index: index,
-                                onTrade: (action, quantity, price) {
-                                  _tradeAsset(action, index, quantity, price);
-                                },
-                              );
-                            },
-                          );
-                        },
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 8.0),
+                              child: Card(
+                                elevation: 4.0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10.0),
+                                ),
+                                child: ListTile(
+                                  title: Text('${asset['name']}'),
+                                  subtitle: FutureBuilder<double>(
+                                    future: _getCurrentPrice(asset['code']),
+                                    builder: (context, snapshot) {
+                                      if (snapshot.connectionState == ConnectionState.waiting) {
+                                        return Row(
+                                          children: [
+                                            Text('수량: ${asset['quantity']} | 평가금: '),
+                                            SizedBox(
+                                              height: 20.0,
+                                              width: 20.0,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2.0,
+                                              ),
+                                            ),
+                                          ],
+                                        );
+                                      } else if (snapshot.hasError) {
+                                        return Text('Error');
+                                      } else {
+                                        double currentPrice = snapshot.data ?? 0;
+                                        double currentValue = asset['quantity'] * currentPrice;
+                                        double initialValue = asset['quantity'] * asset['initialPrice'];
+                                        double profitLoss = currentValue - initialValue;
+                                        double profitLossPercent = (profitLoss / initialValue) * 100;
+                                        String profitLossText = profitLoss >= 0
+                                            ? '+${formatCurrency(profitLoss, asset['code'])} (${profitLossPercent.toStringAsFixed(2)}%)'
+                                            : '-${formatCurrency(profitLoss.abs(), asset['code'])} (${profitLossPercent.abs().toStringAsFixed(2)}%)';
+                                        Color profitLossColor = profitLoss >= 0 ? Colors.red : Colors.blue;
+
+                                        return Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text('수량: ${asset['quantity']} | 평가금: ${formatCurrency(currentValue, asset['code'])}'),
+                                            Text(
+                                              '수익: $profitLossText',
+                                              style: TextStyle(color: profitLossColor),
+                                            ),
+                                          ],
+                                        );
+                                      }
+                                    },
+                                  ),
+                                  trailing: Wrap(
+                                    spacing: 12, // space between two icons
+                                    children: <Widget>[
+                                      IconButton(
+                                        icon: Icon(Icons.edit),
+                                        onPressed: () {
+                                          showDialog(
+                                            context: context,
+                                            builder: (BuildContext context) {
+                                              return TradeDialog(
+                                                index: index,
+                                                onTrade: (action, quantity, price) {
+                                                  _tradeAsset(action, index, quantity, price);
+                                                },
+                                              );
+                                            },
+                                          );
+                                        },
+                                      ),
+                                      IconButton(
+                                        icon: Icon(Icons.delete),
+                                        onPressed: () => _deleteAsset(index),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
-                      IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: () => _deleteAsset(index),
-                      ),
-                    ],
-                  ),
-                ),
-              );
+                    ),
+                  ],
+                );
+              }
             },
           );
         },
@@ -249,7 +351,7 @@ class _TradeDialogState extends State<TradeDialog> {
               });
             },
             children: <Widget>[
-              Padding(
+                            Padding(
                 padding: EdgeInsets.symmetric(horizontal: 12.0),
                 child: Text('매수', style: TextStyle(fontSize: 16)),
               ),
@@ -293,3 +395,4 @@ class _TradeDialogState extends State<TradeDialog> {
     );
   }
 }
+

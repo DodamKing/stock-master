@@ -47,6 +47,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: Text('Stock Master'),
+      ),
       body: Center(
         child: _widgetOptions.elementAt(_selectedIndex),
       ),

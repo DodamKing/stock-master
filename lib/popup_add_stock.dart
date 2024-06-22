@@ -47,7 +47,7 @@ class _AddStockPopupState extends State<AddStockPopup> {
             ),
             TextFormField(
               controller: _priceController,
-              decoration: InputDecoration(labelText: '평단가'),
+              decoration: InputDecoration(labelText: '현재가'),
               keyboardType: TextInputType.number,
               validator: (value) {
                 if (value == null || value.isEmpty) {
